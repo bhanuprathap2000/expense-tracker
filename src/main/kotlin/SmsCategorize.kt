@@ -16,6 +16,10 @@ class SmsCategorize {
         "myntra" to "shopping"
     )
 
+    /**
+     * This method reads the file from the given file path and using the regex finds the merchant,category,payment mode
+     * and writes back to a new csv file named smscategory.csv in the current working directory
+     * */
     suspend fun readSmsDataFromFileAndCategorize(filePath: String) {
 
 
@@ -26,27 +30,17 @@ class SmsCategorize {
         val csvFileName = "smscategory.csv"
 
         try {
-            // Create a FileWriter and CSVPrinter with the desired format
+            // Create a FileWriter
             val csvWriter = withContext(Dispatchers.IO) {
                 FileWriter(csvFileName)
             }
 
+            val headers = "Sms,Merchant Name,Category,Payment Mode,Amount\n"
             withContext(Dispatchers.IO) {
-                csvWriter.append("Sms")
-                csvWriter.append(",")
-                csvWriter.append("Merchant Name")
-                csvWriter.append(",")
-                csvWriter.append("Category")
-                csvWriter.append(",")
-                csvWriter.append("Payment Mode")
-                csvWriter.append("\n")
-
+                csvWriter.append(headers)
+                smsData.readLine() //skip reading the headers
             }
 
-
-            withContext(Dispatchers.IO) {
-                smsData.readLine()
-            }
 
             smsData.forEachLine {
                 val merchantName = givenSmsDataFindMerchant(it)
@@ -56,16 +50,17 @@ class SmsCategorize {
                 val paymentMode = givenSmsDataFindModeOfPayment(it)
                 println("Payment Mode $paymentMode ")
 
+                val amount = givenSmsDataFindAmount(it)
+
+                println("Amount $amount")
+
                 csvWriter.append(
-                    "".plus(it).plus(",").plus(merchantName).plus(",").plus(category).plus(",").plus(paymentMode)
-                        .plus("\n")
+                    "$it,$merchantName,$category,$paymentMode,$amount\n"
                 )
             }
 
             withContext(Dispatchers.IO) {
                 csvWriter.flush()
-            }
-            withContext(Dispatchers.IO) {
                 csvWriter.close()
             }
 
@@ -85,7 +80,7 @@ class SmsCategorize {
         val pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE)
         val matcher = pattern.matcher(smsData)
         return if (matcher.find()) {
-            matcher.group(1).lowercase(Locale.getDefault())
+            matcher.group(0).lowercase()
         } else {
             "Misc"
         }
@@ -97,9 +92,25 @@ class SmsCategorize {
         val pattern: Pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE)
         val matcher = pattern.matcher(smsData)
         return if (matcher.find()) {
-            matcher.group(1).lowercase(Locale.getDefault())
+            matcher.group(0).lowercase()
         } else {
             "Misc"
         }
+    }
+
+    private fun givenSmsDataFindAmount(smsData: String): String? {
+
+        val regex = "\\d+\\.\\d{2}"
+        val pattern: Pattern = Pattern.compile(regex)
+
+        val matcher = pattern.matcher(smsData)
+
+        return if (matcher.find()) {
+            matcher.group(0)
+        } else {
+            null
+        }
+
+
     }
 }
