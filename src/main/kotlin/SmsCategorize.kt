@@ -3,7 +3,6 @@ import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.FileReader
 import java.io.FileWriter
-import java.util.*
 import java.util.regex.Pattern
 
 
@@ -13,7 +12,21 @@ class SmsCategorize {
         "paytm" to "wallet",
         "amazon" to "shopping",
         "flipkart" to "shopping",
-        "myntra" to "shopping"
+        "myntra" to "shopping",
+        "act broadband" to "bills",
+        "airtel" to "bills",
+        "jio" to "bills",
+        "bookmyshow" to "entertainment",
+        "bsnl" to "bills",
+        "cleartrip" to "travel",
+        "goibibo" to "travel",
+        "irctc" to "travel",
+        "makemytrip" to "travel",
+        "olacabs" to "travel",
+        "netflix" to "entertainment",
+        "hotstar" to "entertainment",
+        "amazon prime" to "entertainment"
+
     )
 
     /**
@@ -44,15 +57,10 @@ class SmsCategorize {
 
             smsData.forEachLine {
                 val merchantName = givenSmsDataFindMerchant(it)
-                print("Merchant Name $merchantName ")
                 val category = merchantCategoryMap[merchantName] ?: "Misc"
-                print("Category Name $category ")
                 val paymentMode = givenSmsDataFindModeOfPayment(it)
-                println("Payment Mode $paymentMode ")
 
                 val amount = givenSmsDataFindAmount(it)
-
-                println("Amount $amount")
 
                 csvWriter.append(
                     "$it,$merchantName,$category,$paymentMode,$amount\n"
@@ -63,6 +71,8 @@ class SmsCategorize {
                 csvWriter.flush()
                 csvWriter.close()
             }
+
+            println("Process completed,Please find the smscategory.csv in your working directory")
 
 
         } catch (ex: Exception) {
@@ -75,7 +85,7 @@ class SmsCategorize {
 
     private fun givenSmsDataFindModeOfPayment(smsData: String): String {
 
-        val regex = "\\b(Paytm|Google Pay|PhonePe|UPI|Netbanking|Credit Card|Debit Card|Wallet|Cash|NEFT|IMPS)\\b"
+        val regex = "\\b(Paytm|Google Pay|PhonePe|UPI|NetBanking|Cash Deposit|ATM|Credit Card|Debit Card|Wallet|Cash|NEFT|IMPS)\\b"
 
         val pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE)
         val matcher = pattern.matcher(smsData)
@@ -88,7 +98,7 @@ class SmsCategorize {
     }
 
     private fun givenSmsDataFindMerchant(smsData: String): String {
-        val regex = ".*(Paytm|Amazon|Flipkart|Myntra).*"
+        val regex = ".*(Paytm|Amazon|Flipkart|Myntra|ACT Broadband|Airtel|Jio|BookMyShow|BSNL|Cleartrip|GoIbibo|IRCTC|MakeMyTrip|Olacabs|Netflix|Hotstar|Amazon prime).*"
         val pattern: Pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE)
         val matcher = pattern.matcher(smsData)
         return if (matcher.find()) {
@@ -100,13 +110,20 @@ class SmsCategorize {
 
     private fun givenSmsDataFindAmount(smsData: String): String? {
 
-        val regex = "\\d+\\.\\d{2}"
-        val pattern: Pattern = Pattern.compile(regex)
+        val amountRegex = "(?i)(?:(?:RS|INR|MRP)\\.?\\s?)(\\d+(:?\\,\\d+)?(\\,\\d+)?(\\.\\d{1,2})?)"
+        val numberRegex = "\\d+(:?\\,\\d+)?(\\,\\d+)?(\\.\\d{1,2})?"
+        val amountPattern: Pattern = Pattern.compile(amountRegex)
+        val numberPattern = Pattern.compile(numberRegex)
 
-        val matcher = pattern.matcher(smsData)
+        val matcher = amountPattern.matcher(smsData)
+
+
 
         return if (matcher.find()) {
-            matcher.group(0)
+            val amount: String = matcher.group(0)
+            val numberMatcher = numberPattern.matcher(amount)
+
+            if (numberMatcher.find()) numberMatcher.group(0) else null
         } else {
             null
         }
